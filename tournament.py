@@ -83,6 +83,15 @@ def playerStandings():
         wins: the number of matches the player has won
         matches: the number of matches the player has played
     """
+    db = connect()
+    c = db.cursor()
+
+    c.execute("SELECT * FROM standings")
+    res = c.fetchall()
+
+    db.close()
+
+    return res
 
 
 def reportMatch(winner, loser):
@@ -92,6 +101,14 @@ def reportMatch(winner, loser):
       winner:  the id number of the player who won
       loser:  the id number of the player who lost
     """
+    db = connect()
+    c = db.cursor()
+
+    c.execute("UPDATE matches SET matches = matches + 1 WHERE player_id = %s OR player_id = %s", (winner, loser, ))
+    c.execute("UPDATE matches SET wins = wins + 1 WHERE player_id = %s", (winner, ))
+
+    db.commit()
+    db.close()
 
 
 def swissPairings():
@@ -109,3 +126,17 @@ def swissPairings():
         id2: the second player's unique id
         name2: the second player's name
     """
+    db = connect()
+    c = db.cursor()
+
+    c.execute("SELECT id, name FROM standings")
+    all_players = c.fetchall()
+
+    db.close()
+
+    res = []
+    while all_players:
+        res.append(all_players[0]+all_players[1])
+        del all_players[0:2]
+
+    return res
