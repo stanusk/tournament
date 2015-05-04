@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# 
+#
 # tournament.py -- implementation of a Swiss-system tournament
 #
 
@@ -13,32 +13,68 @@ def connect():
 
 def deleteMatches():
     """Remove all the match records from the database."""
+    db = connect()
+    c = db.cursor()
+
+    c.execute("DELETE FROM matches")
+
+    db.commit()
+    db.close()
 
 
 def deletePlayers():
     """Remove all the player records from the database."""
+    db = connect()
+    c = db.cursor()
+
+    c.execute("DELETE FROM players")
+
+    db.commit()
+    db.close()
 
 
 def countPlayers():
-    """Returns the number of players currently registered."""
+    """Return the number of players currently registered."""
+    db = connect()
+    c = db.cursor()
+
+    c.execute("SELECT count(*) FROM players")
+    res = c.fetchone()[0]
+
+    db.close()
+
+    return res
 
 
 def registerPlayer(name):
-    """Adds a player to the tournament database.
-  
+    """Add a player to the tournament database.
+
     The database assigns a unique serial id number for the player.  (This
     should be handled by your SQL database schema, not in your Python code.)
-  
+
+    #### UPDATE ####
+
     Args:
       name: the player's full name (need not be unique).
     """
+    db = connect()
+    c = db.cursor()
+
+    c.execute("INSERT INTO players (name) VALUES (%s)", (name, ))
+
+    c.execute("SELECT id FROM players ORDER BY id DESC")
+    latest_id = c.fetchone()
+    c.execute("INSERT INTO matches VALUES (%s, 0, 0)", (latest_id, ))
+
+    db.commit()
+    db.close()
 
 
 def playerStandings():
-    """Returns a list of the players and their win records, sorted by wins.
+    """Return a list of the players and their win records, sorted by wins.
 
-    The first entry in the list should be the player in first place, or a player
-    tied for first place if there is currently a tie.
+    The first entry in the list should be the player in first place, or a
+    player tied for first place if there is currently a tie.
 
     Returns:
       A list of tuples, each of which contains (id, name, wins, matches):
@@ -50,22 +86,22 @@ def playerStandings():
 
 
 def reportMatch(winner, loser):
-    """Records the outcome of a single match between two players.
+    """Record the outcome of a single match between two players.
 
     Args:
       winner:  the id number of the player who won
       loser:  the id number of the player who lost
     """
- 
- 
+
+
 def swissPairings():
-    """Returns a list of pairs of players for the next round of a match.
-  
+    """Return a list of pairs of players for the next round of a match.
+
     Assuming that there are an even number of players registered, each player
     appears exactly once in the pairings.  Each player is paired with another
     player with an equal or nearly-equal win record, that is, a player adjacent
     to him or her in the standings.
-  
+
     Returns:
       A list of tuples, each of which contains (id1, name1, id2, name2)
         id1: the first player's unique id
@@ -73,5 +109,3 @@ def swissPairings():
         id2: the second player's unique id
         name2: the second player's name
     """
-
-
