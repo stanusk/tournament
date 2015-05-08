@@ -21,6 +21,8 @@ def deleteMatches():
     db.commit()
     db.close()
 
+    print "all match records deleted"
+
 
 def deletePlayers():
     """Remove all the player records from the database."""
@@ -31,6 +33,8 @@ def deletePlayers():
 
     db.commit()
     db.close()
+
+    print "all player records deleted"
 
 
 def countPlayers():
@@ -52,7 +56,10 @@ def registerPlayer(name):
     The database assigns a unique serial id number for the player.  (This
     should be handled by your SQL database schema, not in your Python code.)
 
-    #### UPDATE ####
+    Assuming that players are added only in case that they are supposed to
+    enroll in the tournament, each player is automatically added to both:
+    players table and matches (where the player is assigned id identical to
+    id in players table, 0 value for wins and 0 value for matches played)
 
     Args:
       name: the player's full name (need not be unique).
@@ -68,6 +75,8 @@ def registerPlayer(name):
 
     db.commit()
     db.close()
+
+    print "player %s successfully registered" % (name)
 
 
 def playerStandings():
@@ -97,6 +106,10 @@ def playerStandings():
 def reportMatch(winner, loser):
     """Record the outcome of a single match between two players.
 
+    Assuming that tie is not an option, both winner and loser get their
+    number of matches increased by 1 and the winner gets number of wins
+    increased by 1.
+
     Args:
       winner:  the id number of the player who won
       loser:  the id number of the player who lost
@@ -104,11 +117,19 @@ def reportMatch(winner, loser):
     db = connect()
     c = db.cursor()
 
-    c.execute("UPDATE matches SET matches = matches + 1 WHERE player_id = %s OR player_id = %s", (winner, loser, ))
-    c.execute("UPDATE matches SET wins = wins + 1 WHERE player_id = %s", (winner, ))
+    c.execute(
+        "UPDATE matches SET matches = matches + 1 "
+        "WHERE player_id = %s OR player_id = %s", (winner, loser, )
+        )
+    c.execute(
+        "UPDATE matches SET wins = wins + 1 "
+        "WHERE player_id = %s", (winner, )
+        )
 
     db.commit()
     db.close()
+
+    print "results uploaded"
 
 
 def swissPairings():
