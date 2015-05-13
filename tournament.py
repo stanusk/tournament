@@ -21,8 +21,6 @@ def deleteMatches():
     db.commit()
     db.close()
 
-    print "all match records deleted"
-
 
 def deletePlayers():
     """Remove all the player records from the database."""
@@ -33,8 +31,6 @@ def deletePlayers():
 
     db.commit()
     db.close()
-
-    print "all player records deleted"
 
 
 def countPlayers():
@@ -69,14 +65,12 @@ def registerPlayer(name):
 
     c.execute("INSERT INTO players (name) VALUES (%s)", (name, ))
 
-    c.execute("SELECT id FROM players ORDER BY id DESC")
+    c.execute("SELECT id FROM v_newPlayerID")
     latest_id = c.fetchone()
     c.execute("INSERT INTO matches VALUES (%s, 0, 0)", (latest_id, ))
 
     db.commit()
     db.close()
-
-    print "player %s successfully registered" % (name)
 
 
 def playerStandings():
@@ -95,7 +89,7 @@ def playerStandings():
     db = connect()
     c = db.cursor()
 
-    c.execute("SELECT * FROM standings")
+    c.execute("SELECT * FROM v_standings")
     res = c.fetchall()
 
     db.close()
@@ -129,8 +123,6 @@ def reportMatch(winner, loser):
     db.commit()
     db.close()
 
-    print "results uploaded"
-
 
 def swissPairings():
     """Return a list of pairs of players for the next round of a match.
@@ -150,12 +142,14 @@ def swissPairings():
     db = connect()
     c = db.cursor()
 
-    c.execute("SELECT id, name FROM standings")
+    c.execute("SELECT id, name FROM v_standings")
     all_players = c.fetchall()
 
     db.close()
 
     res = []
+    # keep appending tuples of pairs of players to result and deleting them
+    # from the query output until it is empty
     while all_players:
         res.append(all_players[0]+all_players[1])
         del all_players[0:2]

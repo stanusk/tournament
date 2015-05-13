@@ -49,6 +49,7 @@ def testRegisterCountDelete():
     if c != 4:
         raise ValueError(
             "After registering four players, countPlayers should be 4.")
+    deleteMatches()  # added to enable use of foreign key on player_id
     deletePlayers()
     c = countPlayers()
     if c != 0:

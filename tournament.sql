@@ -6,16 +6,23 @@
 -- You can write comments in this file by starting them with two dashes, like
 -- these lines here.
 
+-- Tables --
 CREATE TABLE players (
-    id serial,
-    name text,
-    PRIMARY KEY(id)
+    id serial PRIMARY KEY,
+    name text
 );
 
 CREATE TABLE matches (
-    player_id integer,
+    player_id integer REFERENCES players(id),
     wins integer,
     matches integer
 );
 
-CREATE VIEW standings AS SELECT players.id, players.name, matches.wins, matches.matches from players, matches WHERE players.id = matches.player_id ORDER BY matches.wins DESC, matches.matches DESC;
+-- Views --
+CREATE VIEW v_newPlayerID AS
+    SELECT id FROM players ORDER BY id DESC LIMIT 1;
+
+CREATE VIEW v_standings AS
+    SELECT players.id, players.name, matches.wins, matches.matches
+    FROM players, matches WHERE players.id = matches.player_id ORDER BY matches.wins
+    DESC, matches.matches DESC;
