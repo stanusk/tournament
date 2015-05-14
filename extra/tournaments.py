@@ -21,9 +21,9 @@ def connect():
 def a_deleteAllTournaments():
     """Delete all tournaments from table 'tournaments'.
 
-    Used only by admins for testing purposes as tournaments that are no longer
-    active should be marked inactive by changing their status to 'closed', but
-    never deleted from production environment.
+    To be used only by admins for testing purposes as tournaments that are no
+    longer active should be marked inactive by changing their status to
+    'closed', but never deleted from production environment.
     """
     db = connect()
     c = db.cursor()
@@ -39,9 +39,9 @@ def a_deleteAllTournaments():
 def a_deleteAllPlayers():
     """Delete all players from table 'players'.
 
-    Used only by admins for testing purposes as players that are no longer
-    active should be marked inactive by changing their status to 'inactive',
-    but never deleted from production environment.
+    To be used only by admins for testing purposes as players that are no
+    longer active should be marked inactive by changing their status to
+    'inactive', but never deleted from production environment.
     """
     db = connect()
     c = db.cursor()
@@ -64,7 +64,7 @@ def createNewTournament(name):
     by default gets 'planned' status.
 
     Args:
-        name: complete name of the tournament (need not be unique).
+        name: Complete name of the tournament (need not be unique).
     """
     db = connect()
     c = db.cursor()
@@ -81,6 +81,43 @@ def createNewTournament(name):
     print "Tournament %s created with the following id: %s" % (name, tour_id)
 
 
+def countTournaments(*status):
+    """Count tournaments either all or by status.
+
+    Return number of all tournaments if no status is provided, or number of
+    tournaments of provided status/es.
+
+    Args:
+        status: (optional) Name of each selected status as separate string.
+
+    Returns:
+        An integer indicating current number of tournaments of selected status
+        or all tournaments in case no status was provided.
+    """
+    db = connect()
+    c = db.cursor()
+
+    if status:
+        # tuple is unpacked to strings
+        status = [s for s in status]
+    else:
+        # List of tuples (one for each option from db tourStatus type) is
+        # selected from db.
+        c.execute("SELECT unnest(enum_range(NULL::tourStatus))")
+        # Tuples are unpacked to strings in a list.
+        status = [s[0] for s in c.fetchall()]
+
+    # Sum up the count of each selected status to get full count of selection.
+    c.execute("SELECT sum(count) FROM v_toursCount "
+              "WHERE status::text = ANY (%s)", [status])
+    res = c.fetchone()[0]
+
+    db.commit()
+    db.close()
+
+    return res
+
+
 def createNewPlayer(name):
     """Add a new player to table 'players'.
 
@@ -88,7 +125,7 @@ def createNewPlayer(name):
     default gets 'active' status.
 
     Args:
-        name: full name of the player (need not be unique).
+        name: Full name of the player (need not be unique).
     """
     db = connect()
     c = db.cursor()
