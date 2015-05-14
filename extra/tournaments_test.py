@@ -21,6 +21,12 @@ def testCreateNewTournament():
     print "###. Success: tournament can be created."
 
 
+def testCreateNewPlayer():
+    """Test adding a new player to the database."""
+    createNewPlayer('Steve Jobs')
+    print "###. Success: player can be created."
+
+
 def testCountToursAll():
     """Test counting all tournaments."""
     a_deleteAllTournaments()
@@ -33,16 +39,23 @@ def testCountToursAll():
         print "###. Success: countTournaments() returned numeric 2."
 
 
-def testCreateNewPlayer():
-    """Test adding a new player to the database."""
-    createNewPlayer('Steve Jobs')
-    print "###. Success: player can be created."
+def testCountPlayersAll():
+    """Test counting all players."""
+    a_deleteAllPlayers()
+    createNewPlayer("Elon Musk")
+    createNewPlayer("Bill Gates")
+    count = countPlayers()
+    if count != 2:
+        raise ValueError("countPlayers() should return numeric 2")
+    else:
+        print "###. Success: countPlayers() returned numeric 2."
 
 
 if __name__ == '__main__':
     testDeleteAllTournaments_a()
     testDeleteAllPlayers_a()
     testCreateNewTournament()
-    testCountToursAll()
     testCreateNewPlayer()
+    testCountToursAll()
+    testCountPlayersAll()
     print "All tests passed successfully!"

@@ -3,7 +3,7 @@
 import psycopg2
 
 
-# GENERAL FUNCTIONS
+# SUPPORTING FUNCTIONS
 
 
 def connect():
@@ -12,6 +12,59 @@ def connect():
     Returns a database connection.
     """
     return psycopg2.connect("dbname=tournaments")
+
+
+def countTP(c_type, *status):
+    """Count tournaments or players (either all or by status).
+
+    Upon choosing a count type (tournaments or players), return number of all
+    tournaments or players if no status is provided, or number of tournaments
+    or players of provided status/es.
+
+    Args:
+        c_type: String "t" for tournaments or string "p" for players.
+        *status: (optional) Name of each selected status as separate string.
+
+    Returns:
+        An integer indicating current number of tournaments/players of
+        selected status or all tournaments/players in case no status was
+        provided.
+    """
+    types = {
+        't': {'status': 'tourStatus', 'view': 'v_toursCount'},
+        'p': {'status': 'playerStatus', 'view': 'v_playersCount'}
+    }
+    if c_type not in types:
+        return "Invalid c_type: {0}.".format(c_type)
+
+    db = connect()
+    c = db.cursor()
+
+    # List of tuples (one for each option from db tourStatus type) is
+    # selected from db.
+    c.execute("SELECT "
+              "unnest(enum_range(NULL::{0}))".format(types[c_type]['status']))
+    db_statuses = [s[0] for s in c.fetchall()]
+
+    # if status is provided, each entry is checked against valid choices from
+    # db
+    if status:
+        status = [s for s in status]
+        for s in status:
+            if s not in db_statuses:
+                return 'Invalid status: {0}'.format(s)
+    # if no status provided, results will reflect all possible choices
+    else:
+        status = db_statuses
+
+    # Sum up the count of each selected status to get full count of selection.
+    c.execute("SELECT sum(count) FROM {0} WHERE status::text = "
+              "ANY (ARRAY{1})".format(types[c_type]['view'], status))
+    res = c.fetchone()[0]
+
+    db.close()
+
+    return res
 
 
 # ADMIN FUNCTIONS
@@ -81,43 +134,6 @@ def createNewTournament(name):
     print "Tournament %s created with the following id: %s" % (name, tour_id)
 
 
-def countTournaments(*status):
-    """Count tournaments either all or by status.
-
-    Return number of all tournaments if no status is provided, or number of
-    tournaments of provided status/es.
-
-    Args:
-        status: (optional) Name of each selected status as separate string.
-
-    Returns:
-        An integer indicating current number of tournaments of selected status
-        or all tournaments in case no status was provided.
-    """
-    db = connect()
-    c = db.cursor()
-
-    if status:
-        # tuple is unpacked to strings
-        status = [s for s in status]
-    else:
-        # List of tuples (one for each option from db tourStatus type) is
-        # selected from db.
-        c.execute("SELECT unnest(enum_range(NULL::tourStatus))")
-        # Tuples are unpacked to strings in a list.
-        status = [s[0] for s in c.fetchall()]
-
-    # Sum up the count of each selected status to get full count of selection.
-    c.execute("SELECT sum(count) FROM v_toursCount "
-              "WHERE status::text = ANY (%s)", [status])
-    res = c.fetchone()[0]
-
-    db.commit()
-    db.close()
-
-    return res
-
-
 def createNewPlayer(name):
     """Add a new player to table 'players'.
 
@@ -140,3 +156,37 @@ def createNewPlayer(name):
     db.close()
 
     print "Player %s created with the following id: %s" % (name, player_id)
+
+
+def countTournaments(*status):
+    """Count tournaments (either all or by status).
+
+    Return number of all tournaments if no status is provided, or number of
+    tournaments of provided status/es.
+
+    Args:
+        *status: (optional) Name of each selected status as separate string.
+
+    Returns:
+        An integer indicating current number of tournaments of selected
+        status/es or all tournaments in case no status was provided.
+    """
+    c_type = 't'
+    return countTP(c_type, *status)
+
+
+def countPlayers(*status):
+    """Count players (either all or by status/es).
+
+    Return number of all players if no status is provided, or number of
+    players of provided status/es.
+
+    Args:
+        *status: (optional) Name of each selected status as separate string.
+
+    Returns:
+        An integer indicating current number of players of selected
+        status/es or all players in case no status was provided.
+    """
+    c_type = 'p'
+    return countTP(c_type, *status)

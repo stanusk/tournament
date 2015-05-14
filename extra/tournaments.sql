@@ -33,6 +33,11 @@ CREATE VIEW v_toursCount AS
     FROM tournaments
     GROUP BY status;
 
+CREATE VIEW v_playersCount AS
+    SELECT status, count(*)
+    FROM players
+    GROUP BY status;
+
 
 /* Populate db */
 -- tournaments
