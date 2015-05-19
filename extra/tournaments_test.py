@@ -212,26 +212,114 @@ def testRegisterOnePlayer():
     else:
         print ("###. Success: player id %s registered "
                "for tournament id %s." % (p_id, t_id))
-    # count players registered for given tournament
-    # c = countRegPlayers(t_id)
-    # if c != 1:
-    #     raise ValueError("countRegPlayers(t_id) should return numeric 1")
-    # else:
-    #     print "###. Success: countRegPlayers(t_id) returned numeric 1."
 
 
 def testCountRegisteredPlayers():
-    """Test counting players registered to a tournament."""
+    """Test counting players registered for given tournament."""
     a_deleteAllPlayers()
     a_deleteAllTours()
     a_deleteAllRegistrations()
-    c = countRegPlayers()
-    if c == '0':
-        raise TypeError(
-            "countRegPlayers() should return numeric zero, not string '0'.")
+    # create test players
+    createNewPlayer("Elon Musk")
+    createNewPlayer("Bill Gates")
+    # get test player id
+    p_id = t_getIdByName('players', 'Elon Musk')
+    p2_id = p_id + 1
+    # create test tournaments
+    createNewTour("Knight or Knave")
+    createNewTour("World Domination")
+    # get test tournament id
+    t_id = t_getIdByName('tournaments', 'Knight or Knave')
+    t2_id = t_id + 1
+    # register players - each to separate tournament
+    registerPlayers(t_id, p_id)
+    registerPlayers(t2_id, p2_id)
+
+    # count players registered to first created tournament
+    c = countRegPlayers(t_id)
+    if c != 1:
+        raise ValueError("countRegPlayers(t_id) should return numeric 1")
+    else:
+        print "###. Success: countRegPlayers(t_id) returned numeric 1."
+
+
+def testRegisterMultiplePlayers():
+    """Test registering multiple players for a tournament."""
+    a_deleteAllPlayers()
+    a_deleteAllTours()
+    a_deleteAllRegistrations()
+    # create test players
+    createNewPlayer("Elon Musk")
+    createNewPlayer("Bill Gates")
+    # get test player id
+    p_id = t_getIdByName('players', 'Elon Musk')
+    p2_id = p_id + 1
+    # create test tournament
+    createNewTour("Knight or Knave")
+    # get test tournament id
+    t_id = t_getIdByName('tournaments', 'Knight or Knave')
+
+    # register players - each to separate tournament
+    registerPlayers(t_id, p_id, p2_id)
+
+    # count players registered to the tournament
+    c = countRegPlayers(t_id)
+    if c != 2:
+        raise ValueError("countRegPlayers(t_id) should return numeric 2")
+    else:
+        print "###. Success: multiple players registered."
+
+
+def testDeregisterAllPlayers():
+    """Test deregistering all players of provided tournament."""
+    a_deleteAllPlayers()
+    a_deleteAllTours()
+    a_deleteAllRegistrations()
+    # create test players
+    createNewPlayer("Elon Musk")
+    createNewPlayer("Bill Gates")
+    # get test player id
+    p_id = t_getIdByName('players', 'Elon Musk')
+    p2_id = p_id + 1
+    # create test tournament
+    createNewTour("Knight or Knave")
+    # get test tournament id
+    t_id = t_getIdByName('tournaments', 'Knight or Knave')
+    # register all players to provided tournament
+    registerPlayers(t_id, p_id, p2_id)
+    deregisterPlayers(t_id)
+    # count players registered to the tournament
+    c = countRegPlayers(t_id)
     if c != 0:
-        raise ValueError("After deleting, countRegPlayers should return zero.")
-    print "###. Success: after deleting, countRegPlayers() returns zero."
+        raise ValueError("countRegPlayers(t_id) should return numeric 0")
+    else:
+        print "###. Success: all players deregistered."
+
+
+def testDeregisterProvidedPlayers():
+    """Test deregistering all players of provided tournament."""
+    a_deleteAllPlayers()
+    a_deleteAllTours()
+    a_deleteAllRegistrations()
+    # create test players
+    createNewPlayer("Elon Musk")
+    createNewPlayer("Bill Gates")
+    # get test player id
+    p_id = t_getIdByName('players', 'Elon Musk')
+    p2_id = p_id + 1
+    # create test tournament
+    createNewTour("Knight or Knave")
+    # get test tournament id
+    t_id = t_getIdByName('tournaments', 'Knight or Knave')
+    # register all players to provided tournament
+    registerPlayers(t_id, p_id, p2_id)
+    deregisterPlayers(t_id, p_id)
+    # count players registered to the tournament
+    c = countRegPlayers(t_id)
+    if c != 1:
+        raise ValueError("countRegPlayers(t_id) should return numeric 1")
+    else:
+        print "###. Success: provided players deregistered."
 
 
 # TESTS
@@ -251,4 +339,7 @@ if __name__ == '__main__':
     testDeleteAllRegistrations()
     testRegisterOnePlayer()
     testCountRegisteredPlayers()
+    testRegisterMultiplePlayers()
+    testDeregisterAllPlayers()
+    testDeregisterProvidedPlayers()
     print "All tests passed successfully!"

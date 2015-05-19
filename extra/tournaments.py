@@ -70,7 +70,7 @@ def s_countTP(c_type, *status):
     return res
 
 
-def s_validId(table, r_id):
+def s_isValidId(table, r_id):
     """Validate if tested id exists in given db table.
 
     Args:
@@ -107,7 +107,7 @@ def s_editTP(table, r_id, **kwargs):
     name = kwargs.get('name')
     status = kwargs.get('status')
     # check if provided id is valid
-    if s_validId(table, r_id) is False:
+    if s_isValidId(table, r_id) is False:
         print "Invalid id '{0}'!".format(r_id)
         return None
 
@@ -121,7 +121,7 @@ def s_editTP(table, r_id, **kwargs):
         query = "UPDATE {0} SET name = %s WHERE id = %s".format(table)
         c.execute(query, (name, r_id))
         print ("Name of {0} id '{1}' changed "
-               "to '{2}'".format(table[0:-1], r_id, name))
+               "to '{2}'.".format(table[0:-1], r_id, name))
     # if status was provided, change it in the provided table
     if status:
         # Table is inserted separately as it needs to be inserted without
@@ -129,7 +129,7 @@ def s_editTP(table, r_id, **kwargs):
         query = "UPDATE {0} SET status = %s WHERE id = %s".format(table)
         c.execute(query, (status, r_id))
         print ("Status of {0} id '{1}' changed "
-               "to '{2}'".format(table[0:-1], r_id, status))
+               "to '{2}'.".format(table[0:-1], r_id, status))
 
     db.commit()
     c.close()
@@ -249,24 +249,24 @@ def createNewTour(name):
            "id: '{1}'.".format(name, tour_id))
 
 
-def changeTourName(t_id, new_name):
+def changeTourName(tour_id, new_name):
     """Change name of tournament in the tournaments table.
 
     Args:
-        t_id: ID of tournament to be edited as string.
+        tour_id: ID of tournament to be edited as string.
         new_name: New complete name of tournament as string.
     """
-    s_editTP('tournaments', t_id, name=new_name)
+    s_editTP('tournaments', tour_id, name=new_name)
 
 
-def changeTourStatus(t_id, new_status):
+def changeTourStatus(tour_id, new_status):
     """Change status of tournament in the tournaments table.
 
     Args:
-        t_id: ID of tournament to be edited as string.
+        tour_id: ID of tournament to be edited as string.
         new_status: New status of tournament as string.
     """
-    s_editTP('tournaments', t_id, status=new_status)
+    s_editTP('tournaments', tour_id, status=new_status)
 
 
 def countTours(*status):
@@ -303,34 +303,34 @@ def createNewPlayer(name):
               "VALUES (%s, 'active')", (name, ))
     c.execute("SELECT id FROM players ORDER BY id DESC")
 
-    p_id = c.fetchone()[0]
+    player_id = c.fetchone()[0]
 
     db.commit()
     c.close()
     db.close()
 
     print ("Player '{0}' created with the following "
-           "id: '{1}'.".format(name, p_id))
+           "id: '{1}'.".format(name, player_id))
 
 
-def changePlayerName(p_id, new_name):
+def changePlayerName(player_id, new_name):
     """Change name of player in the players table.
 
     Args:
-        p_id: ID of player to be edited as string.
+        player_id: ID of player to be edited as string.
         new_name: New full name of player as string.
     """
-    s_editTP('players', p_id, name=new_name)
+    s_editTP('players', player_id, name=new_name)
 
 
-def changePlayerStatus(p_id, new_status):
+def changePlayerStatus(player_id, new_status):
     """Change status of player in the players table.
 
     Args:
-        p_id: ID of player to be edited as string.
+        player_id: ID of player to be edited as string.
         new_status: New status of player as string.
     """
-    s_editTP('players', p_id, status=new_status)
+    s_editTP('players', player_id, status=new_status)
 
 
 def countPlayers(*status):
@@ -351,30 +351,30 @@ def countPlayers(*status):
 
 # MAINTENANCE OF TABLE: registrations
 
-def registerPlayers(t_id, *p_id):
+def registerPlayers(tour_id, *player_id):
     """Register one or multiple players for provided tournament.
 
     Args:
-        t_id: ID number of tournament for which players are being
+        tour_id: ID number of tournament for which players are being
                  registered as integer
-        *p_id: ID number for each player to be registered for a provided
-                    tournament.
+        *player_id: ID number for each player to be registered for a
+                     provided tournament.
     """
-    # Check if provided id is valid.
-    if s_validId('tournaments', t_id) is False:
-        print "Invalid id '{0}'!".format(t_id)
+    # Check if provided tour_id is valid.
+    if s_isValidId('tournaments', tour_id) is False:
+        print "Invalid tournament id '{0}'!".format(tour_id)
         return None
     # Check if tournament is of status 'planned' (users should not be able to
-    # register new players to ongoing or closed tournaments)
-    if s_getStatusById('tournaments', t_id) != 'planned':
+    # register new players to ongoing or closed tournaments).
+    if s_getStatusById('tournaments', tour_id) != 'planned':
         print ("Unable to register for tournament id '{0}'! Tournament no "
-               "longer in 'planned' phase.".format(t_id))
+               "longer in 'planned' phase.".format(tour_id))
         return None
     db = s_connect()
     c = db.cursor()
-    for p in p_id:
+    for p in player_id:
         # Check if provided id is valid.
-        if s_validId('players', p) is False:
+        if s_isValidId('players', p) is False:
             print "Invalid player id '{0}'!".format(p)
             continue
         # Check if player is of status 'active'.
@@ -382,11 +382,69 @@ def registerPlayers(t_id, *p_id):
             print ("Unable to register player id '{0}'! Player "
                    "inactive.".format(p))
             continue
-        # If both checks passed, register player
-        c.execute("INSERT INTO registrations VALUES (default, %s, %s)",
-                  (t_id, p))
+        # If both checks passed, register player (if not already registered)
+        query = ("INSERT INTO registrations (tour_id, player_id) SELECT '{0}'"
+                 ", '{1}' WHERE NOT EXISTS (SELECT * FROM registrations WHERE"
+                 " player_id = '{1}')".format(tour_id, p))
+        c.execute(query)
         print ("Player id '{0}' registered for tournament "
-               "id '{1}'".format(p, t_id))
+               "id '{1}'.".format(p, tour_id))
+    db.commit()
+    c.close()
+    db.close()
+
+
+def countRegPlayers(tour_id):
+    """Count players registered to the provided tournament.
+
+    Args:
+        tour_id: ID number of tournament as integer.
+    Returns:
+        An integer indicating current number of players registered to the
+        provided tournament.
+    """
+    db = s_connect()
+    c = db.cursor()
+    c.execute("SELECT count(*) FROM registrations "
+              "WHERE tour_id = %s", (tour_id,))
+    res = c.fetchone()[0]
+    c.close()
+    db.close()
+    return res
+
+
+def deregisterPlayers(tour_id, *player_id):
+    """Deregister one, multiple, or all players of provided tournament.
+
+    From table 'registrations' delete each record where specified player_id is
+    registered for specified tour_id. If no player_id is provided, all
+    registrations for provided tour_id are deleted.
+
+    Args:
+        tour_id: ID number of tournament as integer.
+        *player_id: (optional) ID number of player/s to be deregistered as
+                    integer
+    """
+    # Check if provided tour_id is valid.
+    if s_isValidId('tournaments', tour_id) is False:
+        print "Invalid id '{0}'!".format(tour_id)
+        return None
+    db = s_connect()
+    c = db.cursor()
+    if player_id:
+        for p in player_id:
+            # Check if provided id is valid.
+            if s_isValidId('players', p) is False:
+                print "Invalid player id '{0}'!".format(p)
+                continue
+            c.execute("DELETE FROM registrations WHERE tour_id = %s "
+                      "AND player_id = %s", (tour_id, p))
+            print ("Player id '{0}'' deregistered from tournament "
+                   "id '{1}'".format(p, tour_id))
+    else:
+        c.execute("DELETE FROM registrations WHERE tour_id = %s", (tour_id,))
+        print ("All players of tournament id '{0}' "
+               "deregistered.".format(tour_id))
     db.commit()
     c.close()
     db.close()
