@@ -3,6 +3,34 @@
 from tournaments import *
 
 
+# SUPPORTING FUNCTIONS
+
+
+def t_getIdByName(table, name):
+    """Return id by name in given db table.
+
+    Retrieve an id of a player or a tournament with the provided name from
+    the provided table.
+
+    Args:
+        table: Complete name of table as string.
+        name: Complete name of tournament or player as string.
+    Returns:
+        An integer referencing the id of provided player/tournament in the
+        provided table.
+    """
+    db = s_connect()
+    c = db.cursor()
+    c.execute("SELECT id FROM {0} WHERE name = '{1}'".format(table, name))
+    t_id = c.fetchone()[0]
+    c.close()
+    db.close()
+    return t_id
+
+
+# TEST FUNCTIONS
+
+
 def testDeleteAllTours_a():
     """Test (admin) deleting all tournaments from 'tournaments' table."""
     a_deleteAllTours()
@@ -34,14 +62,15 @@ def testEditPlayer():
     a_deleteAllPlayers()
     # create test player
     createNewPlayer("Elon Musk")
-    db = connect()
-    c = db.cursor()
     # get test player id
-    c.execute("SELECT id FROM players WHERE name = 'Elon Musk'")
-    p_id = c.fetchone()[0]
+    p_id = t_getIdByName('players', 'Elon Musk')
+
     # edit test player
     changePlayerName(p_id, "Nikola Tesla")
     changePlayerStatus(p_id, "inactive")
+
+    db = s_connect()
+    c = db.cursor()
     # get changed name and status
     c.execute("SELECT name, status FROM players WHERE id = %s", (p_id,))
     p_details = c.fetchone()
@@ -64,14 +93,15 @@ def testEditTour():
     a_deleteAllTours()
     # create test tournament
     createNewTour("Metlobal")
-    db = connect()
-    c = db.cursor()
     # get test tournament id
-    c.execute("SELECT id FROM tournaments WHERE name = 'Metlobal'")
-    t_id = c.fetchone()[0]
+    t_id = t_getIdByName('tournaments', 'Metlobal')
+
     # edit test tournament
     changeTourName(t_id, "Beer-pong")
     changeTourStatus(t_id, "ongoing")
+
+    db = s_connect()
+    c = db.cursor()
     # get changed name and status
     c.execute("SELECT name, status FROM tournaments WHERE id = %s", (t_id,))
     t_details = c.fetchone()
@@ -94,8 +124,8 @@ def testCountToursAll():
     a_deleteAllTours()
     createNewTour("Knight on Knave")
     createNewTour("CheckiO World Championship")
-    count = countTours()
-    if count != 2:
+    c = countTours()
+    if c != 2:
         raise ValueError("countTours() should return numeric 2")
     else:
         print "###. Success: countTours() returned numeric 2."
@@ -104,18 +134,16 @@ def testCountToursAll():
 def testCountToursClosed():
     """Test counting closed tournaments."""
     a_deleteAllTours()
+    # create test tournaments
     createNewTour("Knight on Knave")
     createNewTour("CheckiO World Championship")
-    db = connect()
-    c = db.cursor()
     # get test tournament id
-    c.execute("SELECT id FROM tournaments WHERE name = 'Knight on Knave'")
-    t_id = c.fetchone()[0]
-    c.close()
-    db.close()
+    t_id = t_getIdByName('tournaments', 'Knight on Knave')
+    # change status of test tournament to "closed"
     changeTourStatus(t_id, "closed")
-    count = countTours("closed")
-    if count != 1:
+    # count "closed" tournaments
+    c = countTours("closed")
+    if c != 1:
         raise ValueError("countTours('closed') should return numeric 1")
     else:
         print "###. Success: countTours('closed') returned numeric 1."
@@ -126,8 +154,8 @@ def testCountPlayersAll():
     a_deleteAllPlayers()
     createNewPlayer("Elon Musk")
     createNewPlayer("Bill Gates")
-    count = countPlayers()
-    if count != 2:
+    c = countPlayers()
+    if c != 2:
         raise ValueError("countPlayers() should return numeric 2")
     else:
         print "###. Success: countPlayers() returned numeric 2."
@@ -136,21 +164,77 @@ def testCountPlayersAll():
 def testCountPlayersInactive():
     """Test counting inactive players."""
     a_deleteAllPlayers()
+    # create test players
     createNewPlayer("Elon Musk")
     createNewPlayer("Bill Gates")
-    db = connect()
-    c = db.cursor()
     # get test player id
-    c.execute("SELECT id FROM players WHERE name = 'Bill Gates'")
-    p_id = c.fetchone()[0]
-    c.close()
-    db.close()
+    p_id = t_getIdByName('players', 'Bill Gates')
+    # change test players status to "inactive"
     changePlayerStatus(p_id, "inactive")
-    count = countPlayers("inactive")
-    if count != 1:
+    # count players with "inactive" status
+    c = countPlayers("inactive")
+    if c != 1:
         raise ValueError("countPlayers('inactive') should return numeric 1")
     else:
         print "###. Success: countPlayers('inactive') returned numeric 1."
+
+
+def testDeleteAllRegistrations():
+    """Test (admin) deleting all registrations."""
+    a_deleteAllRegistrations()
+    print "###. (adm) Success: registrations can be deleted."
+
+
+def testRegisterOnePlayer():
+    """Test registering a player for a tournament."""
+    a_deleteAllPlayers()
+    a_deleteAllTours()
+    a_deleteAllRegistrations()
+    # create test player
+    createNewPlayer("Elon Musk")
+    # get test player id
+    p_id = t_getIdByName('players', 'Elon Musk')
+    # create test tournament
+    createNewTour("Knight or Knave")
+    # get test tournament id
+    t_id = t_getIdByName('tournaments', 'Knight or Knave')
+
+    # register player
+    registerPlayers(t_id, p_id)
+
+    db = s_connect()
+    c = db.cursor()
+    c.execute("SELECT player_id FROM registrations "
+              "WHERE tour_id = %s", (t_id,))
+    res = c.fetchone()[0]
+    if res != p_id:
+        raise ValueError("Player %s failed to be registered." % (p_id))
+    else:
+        print ("###. Success: player id %s registered "
+               "for tournament id %s." % (p_id, t_id))
+    # count players registered for given tournament
+    # c = countRegPlayers(t_id)
+    # if c != 1:
+    #     raise ValueError("countRegPlayers(t_id) should return numeric 1")
+    # else:
+    #     print "###. Success: countRegPlayers(t_id) returned numeric 1."
+
+
+def testCountRegisteredPlayers():
+    """Test counting players registered to a tournament."""
+    a_deleteAllPlayers()
+    a_deleteAllTours()
+    a_deleteAllRegistrations()
+    c = countRegPlayers()
+    if c == '0':
+        raise TypeError(
+            "countRegPlayers() should return numeric zero, not string '0'.")
+    if c != 0:
+        raise ValueError("After deleting, countRegPlayers should return zero.")
+    print "###. Success: after deleting, countRegPlayers() returns zero."
+
+
+# TESTS
 
 
 if __name__ == '__main__':
@@ -164,4 +248,7 @@ if __name__ == '__main__':
     testCountPlayersAll()
     testCountToursClosed()
     testCountPlayersInactive()
+    testDeleteAllRegistrations()
+    testRegisterOnePlayer()
+    testCountRegisteredPlayers()
     print "All tests passed successfully!"
