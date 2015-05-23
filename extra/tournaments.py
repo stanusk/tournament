@@ -167,6 +167,10 @@ def a_deleteAllTours():
     To be used only by admins for testing purposes as tournaments that are no
     longer active should be marked inactive by changing their status to
     'closed', but never deleted from production environment.
+
+    Caution: deleting tournaments will result in deleting all data from
+    registrations, matches and any related views (due to cascading in sql
+    setup).
     """
     db = s_connect()
     c = db.cursor()
@@ -186,6 +190,10 @@ def a_deleteAllPlayers():
     To be used only by admins for testing purposes as players that are no
     longer active should be marked inactive by changing their status to
     'inactive', but never deleted from production environment.
+
+    Caution: deleting players will result in deleting all data from
+    registrations, matches and any related views (due to cascading in sql
+    setup).
     """
     db = s_connect()
     c = db.cursor()

@@ -5,7 +5,6 @@ from tournaments import *
 
 # SUPPORTING FUNCTIONS
 
-
 def t_getIdByName(table, name):
     """Return id by name in given db table.
 
@@ -29,7 +28,6 @@ def t_getIdByName(table, name):
 
 
 # TEST FUNCTIONS
-
 
 def testDeleteAllTours_a():
     """Test (admin) deleting all tournaments from 'tournaments' table."""
@@ -259,7 +257,7 @@ def testRegisterMultiplePlayers():
     # get test tournament id
     t_id = t_getIdByName('tournaments', 'Knight or Knave')
 
-    # register players - each to separate tournament
+    # register multiple players to provided tournament
     registerPlayers(t_id, p_id, p2_id)
 
     # count players registered to the tournament
@@ -287,6 +285,7 @@ def testDeregisterAllPlayers():
     t_id = t_getIdByName('tournaments', 'Knight or Knave')
     # register all players to provided tournament
     registerPlayers(t_id, p_id, p2_id)
+    # deregister all players from provided tournament
     deregisterPlayers(t_id)
     # count players registered to the tournament
     c = countRegPlayers(t_id)
@@ -313,6 +312,7 @@ def testDeregisterProvidedPlayers():
     t_id = t_getIdByName('tournaments', 'Knight or Knave')
     # register all players to provided tournament
     registerPlayers(t_id, p_id, p2_id)
+    # deregister first player from provided tournament
     deregisterPlayers(t_id, p_id)
     # count players registered to the tournament
     c = countRegPlayers(t_id)
@@ -323,7 +323,6 @@ def testDeregisterProvidedPlayers():
 
 
 # TESTS
-
 
 if __name__ == '__main__':
     testDeleteAllTours_a()
