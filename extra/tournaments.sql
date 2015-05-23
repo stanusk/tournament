@@ -10,12 +10,12 @@ CREATE DATABASE tournaments;
 
 /* Establish schema */
 
--- data types --
+-- DATA TYPES --
 CREATE TYPE tourStatus AS ENUM ('planned', 'ongoing', 'closed');
 CREATE TYPE playerStatus AS ENUM ('active', 'inactive');
 
 
--- tables --
+-- TABLES --
 CREATE TABLE tournaments (
     id serial PRIMARY KEY,
     name text NOT NULL,
@@ -49,7 +49,7 @@ CREATE TABLE matchesRaw (
 );
 
 
--- views --
+-- VIEWS --
 
 -- tournaments:
 CREATE VIEW v_toursCountByStatus AS
@@ -64,21 +64,32 @@ CREATE VIEW v_playersCountByStatus AS
     GROUP BY status;
 
 -- matches:
-CREATE VIEW v_matchWinners AS
-    SELECT id,
-           -- select id of player with higher score as winner or leave empty
-           -- (null) in case of a draw
+CREATE VIEW v_matches AS
+    SELECT *,
+           -- select id of player with higher score as winner or leave empty (null) in case of a draw
            CASE WHEN pl1_score > pl2_score THEN pl1_id
                 WHEN pl1_score < pl2_score THEN pl2_id
            END as winner_id
     FROM matchesRaw;
 
-CREATE VIEW v_matches AS
-    SELECT r.*, w.winner_id
-    FROM matchesRaw AS r JOIN v_matchWinners as w ON r.id = w.id;
+
+CREATE VIEW v_tourStandings AS
+    SELECT r.tour_id,
+           r.player_id,
+           -- name matched from players table
+           (SELECT name FROM players WHERE id = r.player_id),
+           -- matches played: count of IDs from v_matches with matching tour_id and player_id (either as player 1 or player 2)
+           (SELECT count(m.id) AS matches FROM v_matches m WHERE m.tour_id = r.tour_id AND (r.player_id = m.pl1_id OR r.player_id = m.pl2_id)),
+           -- wins: count of winner_IDs from v_matches with matching tour_id where given player_id equals winner_id
+           (SELECT count(m.winner_id) AS wins FROM v_matches m WHERE m.tour_id = r.tour_id AND m.winner_id = r.player_id),
+           -- draws: count of IDs from v_matches with matching tour_id and player_id (either as player 1 or player 2) where winner_id is null
+           (SELECT count(m.id) AS draws FROM v_matches m WHERE m.tour_id = r.tour_id AND (r.player_id = m.pl1_id OR r.player_id = m.pl2_id) AND m.winner_id IS NULL)
+    FROM registrations AS r
+    ORDER BY r.tour_id, wins DESC, draws DESC;
 
 
 /* Populate db */
+-- for ad hoc tests during db design
 
 -- tournaments
 INSERT INTO tournaments VALUES (default, 't_tour1', 'planned');
