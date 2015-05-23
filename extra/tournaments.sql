@@ -66,9 +66,10 @@ CREATE VIEW v_playersCountByStatus AS
 -- matches:
 CREATE VIEW v_matches AS
     SELECT *,
-           -- select id of player with higher score as winner or leave empty (null) in case of a draw
+           -- add winner: select id of player with higher score as winner or id of player with assigned bye as winner or leave empty (null) in case of a draw
            CASE WHEN pl1_score > pl2_score THEN pl1_id
                 WHEN pl1_score < pl2_score THEN pl2_id
+                WHEN pl1_id = pl2_id THEN pl1_id -- bye case
            END as winner_id
     FROM matchesRaw;
 
@@ -79,11 +80,13 @@ CREATE VIEW v_tourStandings AS
            -- name matched from players table
            (SELECT name FROM players WHERE id = r.player_id),
            -- matches played: count of IDs from v_matches with matching tour_id and player_id (either as player 1 or player 2)
-           (SELECT count(m.id) AS matches FROM v_matches m WHERE m.tour_id = r.tour_id AND (r.player_id = m.pl1_id OR r.player_id = m.pl2_id)),
+           (SELECT count(id) AS matches FROM v_matches WHERE tour_id = r.tour_id AND (pl1_id = r.player_id OR pl2_id = r.player_id)),
            -- wins: count of winner_IDs from v_matches with matching tour_id where given player_id equals winner_id
-           (SELECT count(m.winner_id) AS wins FROM v_matches m WHERE m.tour_id = r.tour_id AND m.winner_id = r.player_id),
+           (SELECT count(winner_id) AS wins FROM v_matches WHERE tour_id = r.tour_id AND winner_id = r.player_id),
            -- draws: count of IDs from v_matches with matching tour_id and player_id (either as player 1 or player 2) where winner_id is null
-           (SELECT count(m.id) AS draws FROM v_matches m WHERE m.tour_id = r.tour_id AND (r.player_id = m.pl1_id OR r.player_id = m.pl2_id) AND m.winner_id IS NULL)
+           (SELECT count(id) AS draws FROM v_matches WHERE tour_id = r.tour_id AND (pl1_id = r.player_id OR pl2_id = r.player_id) AND winner_id IS NULL),
+           -- byes: count of IDs from v_matches with matching tour_id where player 1 equals player 2
+           (SELECT count(id) as byes FROM v_matches WHERE tour_id = r.tour_id AND pl1_id = r.player_id AND pl1_id = pl2_id)
     FROM registrations AS r
     ORDER BY r.tour_id, wins DESC, draws DESC;
 
@@ -117,8 +120,11 @@ INSERT INTO registrations VALUES (default, 2, 5); -- T(2); P(5)
 
 -- matches
 INSERT INTO matchesRaw VALUES (default, 1, 1, 2, 2, 4); -- T(1); M (1)2:4(2); W(2)
+INSERT INTO matchesRaw VALUES (default, 1, 3, 0, 3, 0); -- T(1); M (3)0:0(3); W(3)
 INSERT INTO matchesRaw VALUES (default, 1, 2, 4, 3, 2); -- T(1); M (2)4:2(3); W(2)
+INSERT INTO matchesRaw VALUES (default, 1, 1, 0, 1, 0); -- T(1); M (1)0:0(1); W(1)
 INSERT INTO matchesRaw VALUES (default, 1, 1, 4, 3, 2); -- T(1); M (1)4:2(3); W(1)
+INSERT INTO matchesRaw VALUES (default, 1, 2, 0, 2, 0); -- T(1); M (2)0:0(2); W(2)
 
 INSERT INTO matchesRaw VALUES (default, 2, 3, 1, 2, 3); -- T(2); M (3)1:3(2); W(2)
 INSERT INTO matchesRaw VALUES (default, 2, 5, 2, 4, 1); -- T(2); M (5)2:1(4); W(5)
