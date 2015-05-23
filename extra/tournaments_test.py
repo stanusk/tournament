@@ -322,6 +322,44 @@ def testDeregisterProvidedPlayers():
         print "###. Success: provided players deregistered."
 
 
+def testStandingsBeforeMatches():
+    """Test obtaining tournament standings before any matches are played."""
+    a_deleteAllPlayers()
+    a_deleteAllTours()
+    a_deleteAllRegistrations()
+    createNewPlayer("Elon Musk")
+    createNewPlayer("Bill Gates")
+    # get test player id
+    p_id = t_getIdByName('players', 'Elon Musk')
+    p2_id = p_id + 1
+    # create test tournament
+    createNewTour("Knight or Knave")
+    # get test tournament id
+    t_id = t_getIdByName('tournaments', 'Knight or Knave')
+    # register all players to provided tournament
+    registerPlayers(t_id, p_id, p2_id)
+    standings = tournamentStandings(t_id)
+    if len(standings) < 2:
+        raise ValueError("Players should appear in playerStandings even"
+                         " before they have played any matches.")
+    elif len(standings) > 2:
+        raise ValueError("Only registered players should appear in "
+                         "standings.")
+    if len(standings[0]) != 7:
+        raise ValueError("Each playerStandings row should have seven "
+                         "columns.")
+    [(t_id, id1, name1, matches1, wins1, draws1, byes1),
+     (t_id, id2, name2, matches2, wins2, draws2, byes2)] = standings
+    if matches1 != 0 or matches2 != 0 or wins1 != 0 or wins2 != 0:
+        raise ValueError(
+            "Newly registered players should have no matches or wins.")
+    if set([name1, name2]) != set(["Elon Musk", "Bill Gates"]):
+        raise ValueError("Registered players' names should appear in "
+                         "standings, even if they have no matches played.")
+    print ("###. Success: newly registered players appear in the standings "
+           "with no matches.")
+
+
 # TESTS
 
 if __name__ == '__main__':
@@ -341,4 +379,5 @@ if __name__ == '__main__':
     testRegisterMultiplePlayers()
     testDeregisterAllPlayers()
     testDeregisterProvidedPlayers()
+    testStandingsBeforeMatches()
     print "All tests passed successfully!"

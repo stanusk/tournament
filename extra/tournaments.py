@@ -456,3 +456,37 @@ def deregisterPlayers(tour_id, *player_id):
     db.commit()
     c.close()
     db.close()
+
+
+def tournamentStandings(tour_id):
+    """Return a list of the players and their match records, sorted by wins.
+
+    The first entry in the list is the player in first place, or a
+    player tied for first place if there is currently a tie.
+
+    Args:
+        tour_id: ID number of tournament as integer.
+    Returns:
+        A list of tuples, each of which contains (tour_id, player_id, name,
+        matches, wins, draws, byes):
+            tour_id: ID number of tournament
+            id: the player's unique ID (assigned by the database)
+            name: the player's full name (as registered)
+            matches: the number of matches the player has played
+            wins: the number of matches the player has won
+            draws: the number of matches which resulted in a draw
+            byes: the number of matches in which the player received a bye
+    """
+    # Check if provided tour_id is valid.
+    if s_isValidId('tournaments', tour_id) is False:
+        print "Invalid id '{0}'!".format(tour_id)
+        return None
+
+    db = s_connect()
+    c = db.cursor()
+    c.execute("SELECT * FROM v_tourStandings WHERE tour_id = %s", (tour_id,))
+    res = c.fetchall()
+    c.close()
+    db.close()
+
+    return res
