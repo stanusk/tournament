@@ -73,12 +73,6 @@ CREATE VIEW v_matches AS
            END AS winner_id
     FROM matchesRaw;
 
-
--- create view wins as select tour_id, winner_id, count(winner_id) as wins from v_matches where winner_id is not null group by tour_id, winner_id;
-
-    -- select sum(wins) from wins where tour_id = 1 and winner_id in (select winner_id from wins where tour_id = 1);
-
-
 CREATE VIEW v_tourStandings AS
     SELECT r.tour_id,
            r.player_id,
@@ -113,23 +107,6 @@ CREATE VIEW v_tourStandings AS
     FROM registrations AS r
     ORDER BY r.tour_id, wins DESC, draws DESC;
 
-           -- omw (opponent match wins):  
-
-           -- (SELECT sum(wins) FROM
-           --     (SELECT CASE WHEN pl1_id = r.player_id THEN pl2_id
-           --                  WHEN pl2_id = r.player_id THEN pl1_id
-           --             END AS opponent_id,
-           --             (SELECT count(winner_id) AS wins FROM v_matches WHERE tour_id = r.tour_id AND winner_id = opponents_wins.opponent_id) AS opponent_wins
-           --     FROM v_matches
-           --     WHERE pl1_id != pl2_id AND tour_id = r.tour_id) AS opponents_wins)
-
--- CREATE VIEW v_opponents AS
---     SELECT CASE WHEN pl1_id = r.player_id THEN pl2_id
---                 WHEN pl2_id = r.player_id THEN pl1_id
---            END AS opponent_id,
---            (SELECT count(winner_id) AS wins FROM v_matches WHERE tour_id = r.tour_id AND winner_id = opponent_id)
---     FROM v_matches
---     WHERE pl1_id != pl2_id AND tour_id = r.tour_id
 
 /* Populate db */
 -- for ad hoc tests during db design
