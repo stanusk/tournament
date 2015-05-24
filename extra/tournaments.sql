@@ -70,8 +70,13 @@ CREATE VIEW v_matches AS
            CASE WHEN pl1_score > pl2_score THEN pl1_id
                 WHEN pl1_score < pl2_score THEN pl2_id
                 WHEN pl1_id = pl2_id THEN pl1_id -- bye case
-           END as winner_id
+           END AS winner_id
     FROM matchesRaw;
+
+
+-- create view wins as select tour_id, winner_id, count(winner_id) as wins from v_matches where winner_id is not null group by tour_id, winner_id;
+
+    -- select sum(wins) from wins where tour_id = 1 and winner_id in (select winner_id from wins where tour_id = 1);
 
 
 CREATE VIEW v_tourStandings AS
@@ -86,10 +91,45 @@ CREATE VIEW v_tourStandings AS
            -- draws: count of IDs from v_matches with matching tour_id and player_id (either as player 1 or player 2) where winner_id is null
            (SELECT count(id) AS draws FROM v_matches WHERE tour_id = r.tour_id AND (pl1_id = r.player_id OR pl2_id = r.player_id) AND winner_id IS NULL),
            -- byes: count of IDs from v_matches with matching tour_id where player 1 equals player 2
-           (SELECT count(id) as byes FROM v_matches WHERE tour_id = r.tour_id AND pl1_id = r.player_id AND pl1_id = pl2_id)
+           (SELECT count(id) AS byes FROM v_matches WHERE tour_id = r.tour_id AND pl1_id = r.player_id AND pl1_id = pl2_id),
+           -- omw (opponent match wins): sum of wins of all opponents of given player within given tournament
+           (SELECT sum(wins) as omw
+            FROM (
+                -- winners with number of wins by tournament
+                SELECT tour_id, winner_id, count(winner_id) AS wins 
+                FROM v_matches 
+                WHERE winner_id IS NOT NULL 
+                GROUP BY tour_id, winner_id
+            ) AS wins
+            WHERE tour_id = r.tour_id AND winner_id IN (
+                -- opponents of r.player_id
+                SELECT CASE WHEN pl1_id = r.player_id THEN pl2_id
+                            WHEN pl2_id = r.player_id THEN pl1_id
+                       END
+                FROM v_matches
+                -- exclude byes
+                WHERE pl1_id != pl2_id
+            ))
     FROM registrations AS r
     ORDER BY r.tour_id, wins DESC, draws DESC;
 
+           -- omw (opponent match wins):  
+
+           -- (SELECT sum(wins) FROM
+           --     (SELECT CASE WHEN pl1_id = r.player_id THEN pl2_id
+           --                  WHEN pl2_id = r.player_id THEN pl1_id
+           --             END AS opponent_id,
+           --             (SELECT count(winner_id) AS wins FROM v_matches WHERE tour_id = r.tour_id AND winner_id = opponents_wins.opponent_id) AS opponent_wins
+           --     FROM v_matches
+           --     WHERE pl1_id != pl2_id AND tour_id = r.tour_id) AS opponents_wins)
+
+-- CREATE VIEW v_opponents AS
+--     SELECT CASE WHEN pl1_id = r.player_id THEN pl2_id
+--                 WHEN pl2_id = r.player_id THEN pl1_id
+--            END AS opponent_id,
+--            (SELECT count(winner_id) AS wins FROM v_matches WHERE tour_id = r.tour_id AND winner_id = opponent_id)
+--     FROM v_matches
+--     WHERE pl1_id != pl2_id AND tour_id = r.tour_id
 
 /* Populate db */
 -- for ad hoc tests during db design
