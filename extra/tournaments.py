@@ -1,6 +1,7 @@
 """Manage a database of tournaments using the Swiss system of organization."""
 
 import psycopg2
+import random
 
 
 # SUPPORTING FUNCTIONS
@@ -533,9 +534,9 @@ def reportMatch(tour_id, player1_id, player1_score, player2_id, player2_score):
     assigned. A bye is recorded when player1_id and player2_id are equal and
     counts as a (free) win (equal to regular win in standings).
 
-    reportMatch is restricted to:
-        - ongoing tournaments.
-        - players registered to given tournament.
+    restrictions:
+        - tournaments must have status 'ongoing'.
+        - players must be registered to given tournament.
 
     Args:
         tour_id: ID number of tournament as integer.
@@ -573,6 +574,58 @@ def reportMatch(tour_id, player1_id, player1_score, player2_id, player2_score):
     db.commit()
     c.close()
     db.close()
+
+
+def swissPairings(tour_id):
+    """Return a list of players matched for the next round of given tournament.
+
+    Each player appears exactly once in the pairings. Each player is paired
+    with another player with an equal or nearly-equal win record, that is, a
+    player adjacent to him or her in the standings. If there is an odd number
+    of players registered, a random player is assigned a "bye" match which
+    results in being assigned as both players to a match. No player can
+    receive more than one "bye" in a single tournament.
+
+    Returns:
+        A list of tuples, each of which contains (id1, name1, id2,
+        name2, bye2)
+            id1: the first player's unique id
+            name1: the first player's full name
+            id2: the second player's unique id
+            name2: the second player's full name
+    """
+    # Check if provided tour_id is valid.
+    if s_isValidId('tournaments', tour_id) is False:
+        print "Invalid id '{0}'!".format(tour_id)
+        return None
+
+    db = s_connect()
+    c = db.cursor()
+    c.execute("SELECT player_id, name, byes FROM v_tourstandings "
+              "WHERE tour_id = %s", (tour_id,))
+    all_players = c.fetchall()
+    c.close()
+    db.close()
+
+    res = []
+
+    # if odd number of players
+    if countPlayers() % 2 != 0:
+        # make list of candidates-players with 0 "byes"
+        bye_candidates = [(i, n) for (i, n, b) in all_players if b == 0]
+
+        # chose random candidate to get a "bye"
+        bye = random.choice(bye_candidates)
+        all_players = [(i, n) for (i, n, b) in all_players if i != bye[0]]
+        res.append(bye + bye)
+    else:
+        all_players = [(i, n) for (i, n, b) in all_players]
+
+    while all_players:
+        res.append(all_players[0]+all_players[1])
+        del all_players[0:2]
+
+    return res
 
 
 # NOTE FOR REWIEWER: I could let the db check some of these things

@@ -426,6 +426,41 @@ def testReportMatches():
     print "###. Success: after a tournament, players have correct standings."
 
 
+def testPairings():
+    """Test swiss pairings."""
+    a_deleteAllPlayers()
+    a_deleteAllTours()
+    a_deleteAllRegistrations()
+
+    players = ["Twilight Sparkle", "Fluttershy", "Applejack", "Pinkie Pie"]
+    for p in players:
+        createNewPlayer(p)
+    # get test player IDs
+    p1_id = t_getIdByName('players', 'Twilight Sparkle')
+    p2_id, p3_id, p4_id = p1_id + 1, p1_id + 2, p1_id + 3
+    # create test tournament
+    createNewTour("Knight or Knave")
+    # get test tournament id
+    t_id = t_getIdByName('tournaments', 'Knight or Knave')
+    # register all players to provided tournament
+    registerPlayers(t_id, p1_id, p2_id, p3_id, p4_id)
+    changeTourStatus(t_id, "ongoing")
+    reportMatch(t_id, p1_id, 6, p2_id, 3)  # w(1)
+    reportMatch(t_id, p3_id, 6, p4_id, 3)  # w(4)
+
+    pairings = swissPairings(t_id)
+    if len(pairings) != 2:
+        raise ValueError(
+            "For four players, swissPairings should return two pairs.")
+    [(pid1, pname1, pid2, pname2), (pid3, pname3, pid4, pname4)] = pairings
+    correct_pairs = set([frozenset([p1_id, p3_id]), frozenset([p2_id, p4_id])])
+    actual_pairs = set([frozenset([pid1, pid2]), frozenset([pid3, pid4])])
+    if correct_pairs != actual_pairs:
+        raise ValueError(
+            "After one match, players with one win should be paired.")
+    print "###. Success: after one match, players with one win are paired."
+
+
 # TESTS
 
 if __name__ == '__main__':
@@ -447,4 +482,5 @@ if __name__ == '__main__':
     testDeregisterProvidedPlayers()
     testStandingsBeforeMatches()
     testReportMatches()
+    testPairings()
     print "All tests passed successfully!"
