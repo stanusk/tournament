@@ -345,11 +345,11 @@ def testStandingsBeforeMatches():
     elif len(standings) > 2:
         raise ValueError("Only registered players should appear in "
                          "standings.")
-    if len(standings[0]) != 7:
-        raise ValueError("Each playerStandings row should have seven "
+    if len(standings[0]) != 8:
+        raise ValueError("Each playerStandings row should have eight "
                          "columns.")
-    [(t_id, id1, name1, matches1, wins1, draws1, byes1),
-     (t_id, id2, name2, matches2, wins2, draws2, byes2)] = standings
+    [(t_id, id1, name1, matches1, wins1, draws1, byes1, omw1),
+     (t_id, id2, name2, matches2, wins2, draws2, byes2, omw2)] = standings
     if matches1 != 0 or matches2 != 0 or wins1 != 0 or wins2 != 0:
         raise ValueError(
             "Newly registered players should have no matches or wins.")
@@ -358,6 +358,72 @@ def testStandingsBeforeMatches():
                          "standings, even if they have no matches played.")
     print ("###. Success: newly registered players appear in the standings "
            "with no matches.")
+
+
+def testReportMatches():
+    """Test reporting matches including wins, byes, draws.
+
+    Test includes check for general order in which players should be after
+    simulated rounds in the standings.
+    """
+    a_deleteAllPlayers()
+    a_deleteAllTours()
+    a_deleteAllRegistrations()
+    players = ["Elon Musk", "Bruno Walton", "Boots O'Neal", "Cathy Burton",
+               "Diane Grant"]
+    for p in players:
+        createNewPlayer(p)
+    # get test player IDs
+    p1_id = t_getIdByName('players', 'Elon Musk')
+    p2_id, p3_id, p4_id, p5_id = p1_id + 1, p1_id + 2, p1_id + 3, p1_id + 4
+    # create test tournament
+    createNewTour("Knight or Knave")
+    # get test tournament id
+    t_id = t_getIdByName('tournaments', 'Knight or Knave')
+    # register all players to provided tournament
+    registerPlayers(t_id, p1_id, p2_id, p3_id, p4_id, p5_id)
+
+    changeTourStatus(t_id, "ongoing")
+    reportMatch(t_id, p1_id, 6, p2_id, 3)  # w(1)
+    reportMatch(t_id, p3_id, 1, p4_id, 3)  # w(4)
+    reportMatch(t_id, p5_id, 0, p5_id, 0)  # w(5) - bye
+
+    reportMatch(t_id, p1_id, 2, p4_id, 1)  # w(1)
+    reportMatch(t_id, p2_id, 0, p2_id, 0)  # w(2) - bye
+    reportMatch(t_id, p3_id, 3, p5_id, 3)  # w( ) - draw
+
+    reportMatch(t_id, p1_id, 0, p5_id, 1)  # w(5)
+    reportMatch(t_id, p4_id, 4, p2_id, 3)  # w(4)
+    reportMatch(t_id, p3_id, 0, p3_id, 0)  # w(3) - bye
+
+    standings = tournamentStandings(t_id)
+
+    pos = 0  # used in loop below to identify player's position in standings
+    for (t, i, n, m, w, d, b, o) in standings:
+
+        if i == p1_id and (m, w, d, b, o) != (3, 2, 0, 0, 5):
+            raise ValueError("Elon should have 3 matches, 2 wins, 0 draws, "
+                             "0 byes, 5 OMWs")
+        if i == p2_id and (m, w, d, b, o) != (3, 1, 0, 1, 4):
+            raise ValueError("Bruno should have 3 matches, 1 win, 0 draws, "
+                             "1 bye, 4 OMWs")
+        if i == p3_id and (m, w, d, b, o) != (3, 1, 1, 1, 4):
+            raise ValueError("Boots should have 3 matches, 1 win, 1 draw, "
+                             "1 bye, 4 OMWs")
+        if i == p4_id and (m, w, d, b, o) != (3, 2, 0, 0, 4):
+            raise ValueError("Cathy should have 3 matches, 2 wins, 0 draws, "
+                             "0 byes, 4 OMWs")
+        if i == p5_id and (m, w, d, b, o) != (3, 2, 1, 1, 3):
+            raise ValueError("Diane should have 3 matches, 2 wins, 1 draw, "
+                             "1 bye, 3 OMWs")
+
+        res = [p5_id, p1_id, p4_id, p3_id, p2_id]
+        if i != res[pos]:
+            raise ValueError("Player standings order is wrong for: "
+                             "{0}.".format(i))
+        pos += 1
+
+    print "###. Success: after a tournament, players have correct standings."
 
 
 # TESTS
@@ -380,4 +446,5 @@ if __name__ == '__main__':
     testDeregisterAllPlayers()
     testDeregisterProvidedPlayers()
     testStandingsBeforeMatches()
+    testReportMatches()
     print "All tests passed successfully!"

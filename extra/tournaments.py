@@ -62,6 +62,7 @@ def s_countTP(c_type, *status):
     # Sum up the count of all selected statuses to get full count of selection.
     c.execute("SELECT sum(count) FROM {0} WHERE status::text = "
               "ANY (ARRAY{1})".format(types[c_type]['view'], status))
+
     res = c.fetchone()[0]
 
     c.close()
@@ -155,6 +156,28 @@ def s_getStatusById(table, r_id):
     c.close()
     db.close()
     return res
+
+
+def s_isRegistered(tour_id, player_id):
+    """Validate if given player is registered for given tournament.
+
+    Args:
+        tour_id: ID number of tournament as integer.
+        player_id: ID number of player as integer.
+    Returns:
+        boolean: True if player is registered, False otherwise.
+    """
+    db = s_connect()
+    c = db.cursor()
+    c.execute("SELECT player_id FROM registrations "
+              "WHERE tour_id = %s AND player_id = %s", (tour_id, player_id))
+    res = c.fetchone()
+    c.close()
+    db.close()
+
+    if res:
+        return True
+    return False
 
 
 # ADMIN FUNCTIONS
@@ -270,11 +293,17 @@ def changeTourName(tour_id, new_name):
 def changeTourStatus(tour_id, new_status):
     """Change status of tournament in the tournaments table.
 
+    When status is changed to 'closed', all registrations for the tournament
+    are deleted, which also prevents recording any new match results.
+
     Args:
         tour_id: ID of tournament to be edited as string.
         new_status: New status of tournament as string.
     """
     s_editTP('tournaments', tour_id, status=new_status)
+
+    if new_status == 'closed':
+        deregisterPlayers(tour_id)
 
 
 def countTours(*status):
@@ -362,6 +391,10 @@ def countPlayers(*status):
 def registerPlayers(tour_id, *player_id):
     """Register one or multiple players for provided tournament.
 
+    It is not possible to:
+        - register new players to ongoing or closed tournaments.
+        - register inactive players to a tournament.
+
     Args:
         tour_id: ID number of tournament for which players are being
                  registered as integer
@@ -372,8 +405,7 @@ def registerPlayers(tour_id, *player_id):
     if s_isValidId('tournaments', tour_id) is False:
         print "Invalid tournament id '{0}'!".format(tour_id)
         return None
-    # Check if tournament is of status 'planned' (users should not be able to
-    # register new players to ongoing or closed tournaments).
+    # Check if tournament is of status 'planned'
     if s_getStatusById('tournaments', tour_id) != 'planned':
         print ("Unable to register for tournament id '{0}'! Tournament no "
                "longer in 'planned' phase.".format(tour_id))
@@ -381,7 +413,7 @@ def registerPlayers(tour_id, *player_id):
     db = s_connect()
     c = db.cursor()
     for p in player_id:
-        # Check if provided id is valid.
+        # Check if provided player id is valid.
         if s_isValidId('players', p) is False:
             print "Invalid player id '{0}'!".format(p)
             continue
@@ -391,10 +423,8 @@ def registerPlayers(tour_id, *player_id):
                    "inactive.".format(p))
             continue
         # If both checks passed, register player (if not already registered)
-        query = ("INSERT INTO registrations (tour_id, player_id) SELECT '{0}'"
-                 ", '{1}' WHERE NOT EXISTS (SELECT * FROM registrations WHERE"
-                 " player_id = '{1}')".format(tour_id, p))
-        c.execute(query)
+        c.execute("INSERT INTO registrations (tour_id, player_id) "
+                  "VALUES (%s, %s)", (tour_id, p))
         print ("Player id '{0}' registered for tournament "
                "id '{1}'.".format(p, tour_id))
     db.commit()
@@ -435,7 +465,7 @@ def deregisterPlayers(tour_id, *player_id):
     """
     # Check if provided tour_id is valid.
     if s_isValidId('tournaments', tour_id) is False:
-        print "Invalid id '{0}'!".format(tour_id)
+        print "Invalid tournament id '{0}'!".format(tour_id)
         return None
     db = s_connect()
     c = db.cursor()
@@ -479,7 +509,7 @@ def tournamentStandings(tour_id):
     """
     # Check if provided tour_id is valid.
     if s_isValidId('tournaments', tour_id) is False:
-        print "Invalid id '{0}'!".format(tour_id)
+        print "Invalid tournament id '{0}'!".format(tour_id)
         return None
 
     db = s_connect()
@@ -490,3 +520,65 @@ def tournamentStandings(tour_id):
     db.close()
 
     return res
+
+
+def reportMatch(tour_id, player1_id, player1_score, player2_id, player2_score):
+    """Record the outcome of a single match.
+
+    Each player gets assigned a score based on which the winner is determined
+    by the database. In case of equal score a draw is recorded (neither player
+    is recorded as the winner).
+
+    In case there is an odd number of players, a player can get a bye
+    assigned. A bye is recorded when player1_id and player2_id are equal and
+    counts as a (free) win (equal to regular win in standings).
+
+    reportMatch is restricted to:
+        - ongoing tournaments.
+        - players registered to given tournament.
+
+    Args:
+        tour_id: ID number of tournament as integer.
+        player1_id: ID number of the first player as integer.
+        player1_score: score of the first player as integer.
+        player2_id: ID number of the second player as integer.
+        player2_score: score of the second player as integer.
+    """
+    # Check if provided tour_id is valid.
+    if s_isValidId('tournaments', tour_id) is False:
+        print "Invalid id '{0}'!".format(tour_id)
+        return None
+    # Check if tournament is of status 'ongoing'
+    if s_getStatusById('tournaments', tour_id) != 'ongoing':
+        print ("Unable to report a match for tournament id '{0}'! Tournament "
+               "needs to be 'ongoing' to report results.".format(tour_id))
+        return None
+    for p in (player1_id, player2_id):
+        # Check if provided player_id is valid.
+        if s_isValidId('players', p) is False:
+            print "Invalid player id '{0}'!".format(p)
+            return None
+        # Check if provided player_id is registered for provided tournament.
+        if s_isRegistered(tour_id, p) is False:
+            print ("Player id '{0}' not registered to tournament id "
+                   "'{1}'!".format(p, tour_id))
+            return None
+
+    db = s_connect()
+    c = db.cursor()
+    query = "INSERT INTO matchesRaw VALUES (default, %s, %s, %s, %s, %s)"
+    c.execute(
+        query, (tour_id, player1_id, player1_score, player2_id, player2_score)
+    )
+    db.commit()
+    c.close()
+    db.close()
+
+
+# NOTE FOR REWIEWER: I could let the db check some of these things
+# but if I take registrations as an example: I could make player IDs
+# & tour_id in matchesRaw a foreign key combination linked to
+# registrations table, but then I would have to keep registrations
+# there forever even though having players registered for a closed
+# tournament makes no sense to me. I figured that I could learn psql
+# functions for these things, but I have to keep that for later ;)

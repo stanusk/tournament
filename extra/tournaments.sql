@@ -34,6 +34,7 @@ CREATE TABLE registrations (
     -- restricted to admins (for testing only)
     tour_id int NOT NULL REFERENCES tournaments (id) ON DELETE CASCADE,
     player_id int NOT NULL REFERENCES players (id) ON DELETE CASCADE,
+    -- each player can be registered only once for given tournament
     UNIQUE (tour_id, player_id)
 );
 
@@ -41,11 +42,13 @@ CREATE TABLE matchesRaw (
     id serial PRIMARY KEY,
     -- ON DELETE CASCADE is set to simplify testing since deleting is
     -- restricted to admins (for testing only)
-    tour_id int NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
-    pl1_id int NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    tour_id int NOT NULL REFERENCES tournaments (id) ON DELETE CASCADE,
+    pl1_id int NOT NULL REFERENCES players (id) ON DELETE CASCADE,
     pl1_score int NOT NULL,
-    pl2_id int NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    pl2_id int NOT NULL REFERENCES players (id) ON DELETE CASCADE,
     pl2_score int NOT NULL
+    -- NOTE: having foreign key to registrations would make sense but it would
+    -- also disallow deleting registrations
 );
 
 
@@ -105,7 +108,7 @@ CREATE VIEW v_tourStandings AS
                 WHERE pl1_id != pl2_id
             ))
     FROM registrations AS r
-    ORDER BY r.tour_id, wins DESC, draws DESC;
+    ORDER BY r.tour_id, wins DESC, draws DESC, omw DESC;
 
 
 /* Populate db */
