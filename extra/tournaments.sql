@@ -40,15 +40,15 @@ CREATE TABLE registrations (
 
 CREATE TABLE matchesRaw (
     id serial PRIMARY KEY,
+    tour_id int NOT NULL,
+    pl1_id int NOT NULL,
+    pl1_score int NOT NULL,
+    pl2_id int NOT NULL,
+    pl2_score int NOT NULL,
     -- ON DELETE CASCADE is set to simplify testing since deleting is
     -- restricted to admins (for testing only)
-    tour_id int NOT NULL REFERENCES tournaments (id) ON DELETE CASCADE,
-    pl1_id int NOT NULL REFERENCES players (id) ON DELETE CASCADE,
-    pl1_score int NOT NULL,
-    pl2_id int NOT NULL REFERENCES players (id) ON DELETE CASCADE,
-    pl2_score int NOT NULL
-    -- NOTE: having foreign key to registrations would make sense but it would
-    -- also disallow deleting registrations
+    FOREIGN KEY (tour_id, pl1_id) REFERENCES registrations(tour_id, player_id) ON DELETE CASCADE,
+    FOREIGN KEY (tour_id, pl2_id) REFERENCES registrations(tour_id, player_id) ON DELETE CASCADE
 );
 
 
@@ -69,12 +69,25 @@ CREATE VIEW v_playersCountByStatus AS
 -- matches:
 CREATE VIEW v_matches AS
     SELECT *,
-           -- add winner: select id of player with higher score as winner or id of player with assigned bye as winner or leave empty (null) in case of a draw
-           CASE WHEN pl1_score > pl2_score THEN pl1_id
-                WHEN pl1_score < pl2_score THEN pl2_id
-                WHEN pl1_id = pl2_id THEN pl1_id -- bye case
-           END AS winner_id
+            -- add winner: select id of player with higher score as winner or id of player with assigned bye as winner or leave empty (null) in case of a draw
+            CASE WHEN pl1_score > pl2_score THEN pl1_id
+                 WHEN pl1_score < pl2_score THEN pl2_id
+                 WHEN pl1_id = pl2_id THEN pl1_id -- bye case
+            END AS winner_id
     FROM matchesRaw;
+
+-- function for creating a view of opponents of a given player in a given tournament
+CREATE OR REPLACE FUNCTION opponents(tour_id int, player_id int)
+    RETURNS table (opponenets int)
+    AS
+    $body$
+        SELECT CASE WHEN pl1_id = $2 THEN pl2_id
+                    WHEN pl2_id = $2 THEN pl1_id
+               END
+        FROM v_matches
+        WHERE tour_id = $1 AND pl1_id != pl2_id AND (pl1_id = $2 OR pl2_id = $2)
+    $body$
+    language sql;
 
 CREATE VIEW v_tourStandings AS
     SELECT r.tour_id,
@@ -100,12 +113,13 @@ CREATE VIEW v_tourStandings AS
             ) AS wins
             WHERE tour_id = r.tour_id AND winner_id IN (
                 -- opponents of r.player_id
-                SELECT CASE WHEN pl1_id = r.player_id THEN pl2_id
-                            WHEN pl2_id = r.player_id THEN pl1_id
-                       END
-                FROM v_matches
-                -- exclude byes
-                WHERE pl1_id != pl2_id
+                SELECT * FROM opponents(r.tour_id, r.player_id)
+                -- SELECT CASE WHEN pl1_id = r.player_id THEN pl2_id
+                --             WHEN pl2_id = r.player_id THEN pl1_id
+                --        END
+                -- FROM v_matches
+                -- -- exclude byes
+                -- WHERE pl1_id != pl2_id
             ))
     FROM registrations AS r
     ORDER BY r.tour_id, wins DESC, draws DESC, omw DESC;

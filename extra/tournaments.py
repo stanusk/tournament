@@ -253,8 +253,6 @@ def a_deleteAllRegistrations():
 # USER FUNCTIONS
 
 
-# MAINTENANCE OF TABLE: tournaments
-
 def createNewTour(name):
     """Add a new tournament to table 'tournaments'.
 
@@ -294,17 +292,11 @@ def changeTourName(tour_id, new_name):
 def changeTourStatus(tour_id, new_status):
     """Change status of tournament in the tournaments table.
 
-    When status is changed to 'closed', all registrations for the tournament
-    are deleted, which also prevents recording any new match results.
-
     Args:
         tour_id: ID of tournament to be edited as string.
         new_status: New status of tournament as string.
     """
     s_editTP('tournaments', tour_id, status=new_status)
-
-    if new_status == 'closed':
-        deregisterPlayers(tour_id)
 
 
 def countTours(*status):
@@ -322,8 +314,6 @@ def countTours(*status):
     """
     return s_countTP('t', *status)
 
-
-# MAINTENANCE OF TABLE: players
 
 def createNewPlayer(name):
     """Add a new player to table 'players'.
@@ -387,14 +377,12 @@ def countPlayers(*status):
     return s_countTP('p', *status)
 
 
-# MAINTENANCE OF TABLE: registrations
-
 def registerPlayers(tour_id, *player_id):
     """Register one or multiple players for provided tournament.
 
-    It is not possible to:
-        - register new players to ongoing or closed tournaments.
-        - register inactive players to a tournament.
+    Restrictions:
+        - tournament must have status 'planned'.
+        - players must be 'active'.
 
     Args:
         tour_id: ID number of tournament for which players are being
@@ -459,6 +447,9 @@ def deregisterPlayers(tour_id, *player_id):
     registered for specified tour_id. If no player_id is provided, all
     registrations for provided tour_id are deleted.
 
+    Restrictions:
+        - tournament must have status 'planned'.
+
     Args:
         tour_id: ID number of tournament as integer.
         *player_id: (optional) ID number of player/s to be deregistered as
@@ -467,6 +458,11 @@ def deregisterPlayers(tour_id, *player_id):
     # Check if provided tour_id is valid.
     if s_isValidId('tournaments', tour_id) is False:
         print "Invalid tournament id '{0}'!".format(tour_id)
+        return None
+    # Check if tournament is of status 'planned'
+    if s_getStatusById('tournaments', tour_id) != 'planned':
+        print ("Unable to change registrations for tournament id '{0}'! "
+               "Tournament no longer in 'planned' phase.".format(tour_id))
         return None
     db = s_connect()
     c = db.cursor()
@@ -535,8 +531,8 @@ def reportMatch(tour_id, player1_id, player1_score, player2_id, player2_score):
     counts as a (free) win (equal to regular win in standings).
 
     restrictions:
-        - tournaments must have status 'ongoing'.
-        - players must be registered to given tournament.
+        - tournament must have status 'ongoing'.
+        - players must be registered to given tournament (handled by db).
 
     Args:
         tour_id: ID number of tournament as integer.
@@ -558,11 +554,6 @@ def reportMatch(tour_id, player1_id, player1_score, player2_id, player2_score):
         # Check if provided player_id is valid.
         if s_isValidId('players', p) is False:
             print "Invalid player id '{0}'!".format(p)
-            return None
-        # Check if provided player_id is registered for provided tournament.
-        if s_isRegistered(tour_id, p) is False:
-            print ("Player id '{0}' not registered to tournament id "
-                   "'{1}'!".format(p, tour_id))
             return None
 
     db = s_connect()
@@ -608,30 +599,23 @@ def swissPairings(tour_id):
     db.close()
 
     res = []
-
     # if odd number of players
-    if countPlayers() % 2 != 0:
+    if countRegPlayers(tour_id) % 2 != 0:
         # make list of candidates-players with 0 "byes"
         bye_candidates = [(i, n) for (i, n, b) in all_players if b == 0]
 
         # chose random candidate to get a "bye"
         bye = random.choice(bye_candidates)
         all_players = [(i, n) for (i, n, b) in all_players if i != bye[0]]
+        # append bye player to result list
         res.append(bye + bye)
     else:
+        # remove number of byes from player info
         all_players = [(i, n) for (i, n, b) in all_players]
-
     while all_players:
+        # append the topmost two players as a tuple to the result list
         res.append(all_players[0]+all_players[1])
-        del all_players[0:2]
+        # delete topmost two players
+        del all_players[:2]
 
     return res
-
-
-# NOTE FOR REWIEWER: I could let the db check some of these things
-# but if I take registrations as an example: I could make player IDs
-# & tour_id in matchesRaw a foreign key combination linked to
-# registrations table, but then I would have to keep registrations
-# there forever even though having players registered for a closed
-# tournament makes no sense to me. I figured that I could learn psql
-# functions for these things, but I have to keep that for later ;)

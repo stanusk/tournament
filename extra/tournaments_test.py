@@ -9,7 +9,7 @@ def t_getIdByName(table, name):
     """Return id by name in given db table.
 
     Retrieve an id of a player or a tournament with the provided name from
-    the provided table.
+    the provided table (players / tournaments).
 
     Args:
         table: Complete name of table as string.
@@ -20,7 +20,10 @@ def t_getIdByName(table, name):
     """
     db = s_connect()
     c = db.cursor()
-    c.execute("SELECT id FROM {0} WHERE name = '{1}'".format(table, name))
+    # order by name to enable reusing names without the need to delete all
+    # data from the database for each new test case
+    c.execute("SELECT id FROM {0} WHERE name = '{1}' "
+              "ORDER BY id DESC".format(table, name))
     t_id = c.fetchone()[0]
     c.close()
     db.close()
@@ -32,32 +35,29 @@ def t_getIdByName(table, name):
 def testDeleteAllTours_a():
     """Test (admin) deleting all tournaments from 'tournaments' table."""
     a_deleteAllTours()
-    print "###. (adm) Success: tournaments can be deleted."
+    print "1. (adm) Success: tournaments can be deleted."
 
 
 def testDeleteAllPlayers_a():
     """Test (admin) deleting all players from 'players' table."""
     a_deleteAllPlayers()
-    print "###. (adm) Success: players can be deleted."
+    print "2. (adm) Success: players can be deleted."
 
 
 def testCreateNewTour():
     """Test adding a new tournament to the database."""
-    a_deleteAllTours()
     createNewTour('Knight or Knave')
-    print "###. Success: tournament can be created."
+    print "3. Success: tournament can be created."
 
 
 def testCreateNewPlayer():
     """Test adding a new player to the database."""
-    a_deleteAllPlayers()
     createNewPlayer('Steve Jobs')
-    print "###. Success: player can be created."
+    print "4. Success: player can be created."
 
 
 def testEditPlayer():
     """Test changing player name and status."""
-    a_deleteAllPlayers()
     # create test player
     createNewPlayer("Elon Musk")
     # get test player id
@@ -76,11 +76,11 @@ def testEditPlayer():
     db.close()
     # compare new name and status to the desired ones
     if p_details[0] == "Nikola Tesla":
-        print "###. Success: player name changed."
+        print "5a. Success: player name changed."
     else:
         raise ValueError("changePlayerName() failed to change player's name")
     if p_details[1] == "inactive":
-        print "###. Success: player status changed."
+        print "5b. Success: player status changed."
     else:
         raise ValueError("changePlayerStatus() failed to change player's "
                          "status")
@@ -88,7 +88,6 @@ def testEditPlayer():
 
 def testEditTour():
     """Test changing tournament name and status."""
-    a_deleteAllTours()
     # create test tournament
     createNewTour("Metlobal")
     # get test tournament id
@@ -107,11 +106,11 @@ def testEditTour():
     db.close()
     # compare new name and status to the desired ones
     if t_details[0] == "Beer-pong":
-        print "###. Success: tournament name changed."
+        print "6a. Success: tournament name changed."
     else:
         raise ValueError("changeTourName() failed to change tournament's name")
     if t_details[1] == "ongoing":
-        print "###. Success: tournament status changed."
+        print "6b. Success: tournament status changed."
     else:
         raise ValueError("changeTourStatus() failed to change tournament's "
                          "status")
@@ -120,13 +119,14 @@ def testEditTour():
 def testCountToursAll():
     """Test counting all tournaments."""
     a_deleteAllTours()
+    # create test tournaments
     createNewTour("Knight on Knave")
     createNewTour("CheckiO World Championship")
     c = countTours()
     if c != 2:
         raise ValueError("countTours() should return numeric 2")
     else:
-        print "###. Success: countTours() returned numeric 2."
+        print "7. Success: countTours() returned numeric 2."
 
 
 def testCountToursClosed():
@@ -144,19 +144,20 @@ def testCountToursClosed():
     if c != 1:
         raise ValueError("countTours('closed') should return numeric 1")
     else:
-        print "###. Success: countTours('closed') returned numeric 1."
+        print "8. Success: countTours('closed') returned numeric 1."
 
 
 def testCountPlayersAll():
     """Test counting all players."""
     a_deleteAllPlayers()
+    # create test players
     createNewPlayer("Elon Musk")
     createNewPlayer("Bill Gates")
     c = countPlayers()
     if c != 2:
         raise ValueError("countPlayers() should return numeric 2")
     else:
-        print "###. Success: countPlayers() returned numeric 2."
+        print "9. Success: countPlayers() returned numeric 2."
 
 
 def testCountPlayersInactive():
@@ -174,20 +175,17 @@ def testCountPlayersInactive():
     if c != 1:
         raise ValueError("countPlayers('inactive') should return numeric 1")
     else:
-        print "###. Success: countPlayers('inactive') returned numeric 1."
+        print "10. Success: countPlayers('inactive') returned numeric 1."
 
 
 def testDeleteAllRegistrations():
     """Test (admin) deleting all registrations."""
     a_deleteAllRegistrations()
-    print "###. (adm) Success: registrations can be deleted."
+    print "11. (adm) Success: registrations can be deleted."
 
 
 def testRegisterOnePlayer():
     """Test registering a player for a tournament."""
-    a_deleteAllPlayers()
-    a_deleteAllTours()
-    a_deleteAllRegistrations()
     # create test player
     createNewPlayer("Elon Musk")
     # get test player id
@@ -208,15 +206,12 @@ def testRegisterOnePlayer():
     if res != p_id:
         raise ValueError("Player %s failed to be registered." % (p_id))
     else:
-        print ("###. Success: player id %s registered "
+        print ("12. Success: player id %s registered "
                "for tournament id %s." % (p_id, t_id))
 
 
 def testCountRegisteredPlayers():
     """Test counting players registered for given tournament."""
-    a_deleteAllPlayers()
-    a_deleteAllTours()
-    a_deleteAllRegistrations()
     # create test players
     createNewPlayer("Elon Musk")
     createNewPlayer("Bill Gates")
@@ -238,14 +233,11 @@ def testCountRegisteredPlayers():
     if c != 1:
         raise ValueError("countRegPlayers(t_id) should return numeric 1")
     else:
-        print "###. Success: countRegPlayers(t_id) returned numeric 1."
+        print "13. Success: countRegPlayers(t_id) returned numeric 1."
 
 
 def testRegisterMultiplePlayers():
     """Test registering multiple players for a tournament."""
-    a_deleteAllPlayers()
-    a_deleteAllTours()
-    a_deleteAllRegistrations()
     # create test players
     createNewPlayer("Elon Musk")
     createNewPlayer("Bill Gates")
@@ -265,14 +257,11 @@ def testRegisterMultiplePlayers():
     if c != 2:
         raise ValueError("countRegPlayers(t_id) should return numeric 2")
     else:
-        print "###. Success: multiple players registered."
+        print "14. Success: multiple players registered."
 
 
 def testDeregisterAllPlayers():
     """Test deregistering all players of provided tournament."""
-    a_deleteAllPlayers()
-    a_deleteAllTours()
-    a_deleteAllRegistrations()
     # create test players
     createNewPlayer("Elon Musk")
     createNewPlayer("Bill Gates")
@@ -292,14 +281,11 @@ def testDeregisterAllPlayers():
     if c != 0:
         raise ValueError("countRegPlayers(t_id) should return numeric 0")
     else:
-        print "###. Success: all players deregistered."
+        print "15. Success: all players deregistered."
 
 
 def testDeregisterProvidedPlayers():
     """Test deregistering all players of provided tournament."""
-    a_deleteAllPlayers()
-    a_deleteAllTours()
-    a_deleteAllRegistrations()
     # create test players
     createNewPlayer("Elon Musk")
     createNewPlayer("Bill Gates")
@@ -319,14 +305,12 @@ def testDeregisterProvidedPlayers():
     if c != 1:
         raise ValueError("countRegPlayers(t_id) should return numeric 1")
     else:
-        print "###. Success: provided players deregistered."
+        print "16. Success: provided players deregistered."
 
 
 def testStandingsBeforeMatches():
     """Test obtaining tournament standings before any matches are played."""
-    a_deleteAllPlayers()
-    a_deleteAllTours()
-    a_deleteAllRegistrations()
+    # create test players
     createNewPlayer("Elon Musk")
     createNewPlayer("Bill Gates")
     # get test player id
@@ -356,7 +340,7 @@ def testStandingsBeforeMatches():
     if set([name1, name2]) != set(["Elon Musk", "Bill Gates"]):
         raise ValueError("Registered players' names should appear in "
                          "standings, even if they have no matches played.")
-    print ("###. Success: newly registered players appear in the standings "
+    print ("17. Success: newly registered players appear in the standings "
            "with no matches.")
 
 
@@ -366,11 +350,9 @@ def testReportMatches():
     Test includes check for general order in which players should be after
     simulated rounds in the standings.
     """
-    a_deleteAllPlayers()
-    a_deleteAllTours()
-    a_deleteAllRegistrations()
     players = ["Elon Musk", "Bruno Walton", "Boots O'Neal", "Cathy Burton",
                "Diane Grant"]
+    # create test players
     for p in players:
         createNewPlayer(p)
     # get test player IDs
@@ -423,16 +405,13 @@ def testReportMatches():
                              "{0}.".format(i))
         pos += 1
 
-    print "###. Success: after a tournament, players have correct standings."
+    print "18. Success: after a tournament, players have correct standings."
 
 
 def testPairings():
     """Test swiss pairings."""
-    a_deleteAllPlayers()
-    a_deleteAllTours()
-    a_deleteAllRegistrations()
-
     players = ["Twilight Sparkle", "Fluttershy", "Applejack", "Pinkie Pie"]
+    # create test players
     for p in players:
         createNewPlayer(p)
     # get test player IDs
@@ -458,7 +437,32 @@ def testPairings():
     if correct_pairs != actual_pairs:
         raise ValueError(
             "After one match, players with one win should be paired.")
-    print "###. Success: after one match, players with one win are paired."
+    print "19. Success: after one match, players with one win are paired."
+
+
+def testPairingsOdd():
+    """Test swiss pairings with odd number of players."""
+    players = ["Jack Sparrow", "Fluttershy",
+               "Applejack", "Pinkie Pie", "Peter Pan"]
+    # create test players
+    for p in players:
+        createNewPlayer(p)
+    # get test player IDs
+    p1_id = t_getIdByName('players', 'Jack Sparrow')
+    p2_id, p3_id, p4_id, p5_id = p1_id + 1, p1_id + 2, p1_id + 3, p1_id + 4
+    # create test tournament
+    createNewTour("Give a Jack")
+    # get test tournament id
+    t_id = t_getIdByName('tournaments', 'Give a Jack')
+    # register all players to provided tournament
+    registerPlayers(t_id, p1_id, p2_id, p3_id, p4_id, p5_id)
+    changeTourStatus(t_id, "ongoing")
+
+    pairings = swissPairings(t_id)
+    if len(pairings) != 3:
+        raise ValueError(
+            "For five players, swissPairings should return three pairs.")
+    print "20. Success: all five players paired."
 
 
 # TESTS
@@ -483,4 +487,5 @@ if __name__ == '__main__':
     testStandingsBeforeMatches()
     testReportMatches()
     testPairings()
+    testPairingsOdd()
     print "All tests passed successfully!"
