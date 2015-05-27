@@ -82,7 +82,7 @@ import tournaments
 
 - extra:
 ```sh
-# Clone the git repository (unless already cloned) and cd into the 'extra' folder of the cloned directory.
+# Clone the git repository and cd into the 'extra' folder of the cloned directory.
 git clone https://github.com/stanusk/tournament.git
 cd tournament/extra
 
